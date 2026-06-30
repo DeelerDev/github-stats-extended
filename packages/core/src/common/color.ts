@@ -4,11 +4,15 @@ import { themes } from "../themes/index.js";
  * Checks if a string is a valid hex color.
  *
  * @param hexColor String to check.
+ * @param numberSignPrefix Whether the hex color must have a '#' prefix.
  * @returns True if the given string is a valid hex color.
  */
-const isValidHexColor = (hexColor: string): boolean => {
+const isValidHexColor = (
+  hexColor: string,
+  numberSignPrefix = false,
+): boolean => {
   return new RegExp(
-    /^([A-Fa-f0-9]{8}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{3}|[A-Fa-f0-9]{4})$/,
+    `^${numberSignPrefix ? "#" : ""}([A-Fa-f0-9]{8}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{3}|[A-Fa-f0-9]{4})$`,
   ).test(hexColor);
 };
 
@@ -184,4 +188,10 @@ const getCardColors = ({
   return { titleColor, iconColor, textColor, bgColor, borderColor, ringColor };
 };
 
-export { fallbackColor, getCardColors, findInvalidColor };
+export {
+  fallbackColor,
+  getCardColors,
+  findInvalidColor,
+  isValidGradient,
+  isValidHexColor,
+};

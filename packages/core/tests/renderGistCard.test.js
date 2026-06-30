@@ -12,7 +12,7 @@ import { themes } from "../src/themes/index.js";
 const data = {
   name: "test",
   nameWithOwner: "anuraghazra/test",
-  description: "Small test repository with different Python programs.",
+  description: "Small <b>test</b> repository with different Python programs.",
   language: "Python",
   starsCount: 163,
   forksCount: 19,
@@ -20,7 +20,7 @@ const data = {
 
 describe("test renderGistCard", () => {
   it("should render correctly", () => {
-    document.body.innerHTML = renderGistCard(data);
+    document.body.innerHTML = renderGistCard(data, { browser_rendering: true });
 
     const [header] = document.getElementsByClassName("header");
 

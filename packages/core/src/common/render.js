@@ -1,4 +1,4 @@
-import { getCardColors } from "./color.js";
+import { getCardColors, isValidHexColor } from "./color.js";
 import { SECONDARY_ERROR_MESSAGES, TRY_AGAIN_LATER } from "./error.js";
 import { encodeHTML } from "./html.js";
 import { clampValue } from "./ops.js";
@@ -7,14 +7,20 @@ import { clampValue } from "./ops.js";
  * Auto layout utility, allows us to layout things vertically or horizontally with
  * proper gaping.
  *
+ * The caller must ensure that the passed `items` are properly sanitized!
+ *
  * @param {object} props Function properties.
- * @param {string[]} props.items Array of items to layout.
+ * @param {string[]} props.items Array of sanitized items to layout.
  * @param {number} props.gap Gap between items.
  * @param {"column" | "row"=} props.direction Direction to layout items.
  * @param {number[]=} props.sizes Array of sizes for each item.
  * @returns {string[]} Array of items with proper layout.
  */
 const flexLayout = ({ items, gap, direction, sizes = [] }) => {
+  if (sizes.some((size) => !Number.isFinite(size))) {
+    throw new Error("flexLayout: `sizes` must contain only numbers");
+  }
+
   let lastSize = 0;
   // filter() for filtering out empty strings
   return items.filter(Boolean).map((item, i) => {
@@ -36,10 +42,14 @@ const flexLayout = ({ items, gap, direction, sizes = [] }) => {
  * @returns {string} Language display SVG object.
  */
 const createLanguageNode = (langName, langColor) => {
+  if (!isValidHexColor(langColor, true)) {
+    throw new Error(`Invalid language color: ${langColor ?? "<empty>"}`);
+  }
+
   return `
     <g data-testid="primary-lang">
       <circle data-testid="lang-color" cx="0" cy="-5" r="6" fill="${langColor}" />
-      <text data-testid="lang-name" class="gray" x="15">${langName}</text>
+      <text data-testid="lang-name" class="gray" x="15">${encodeHTML(langName)}</text>
     </g>
     `;
 };
@@ -66,6 +76,27 @@ const createProgressNode = ({
   progressBarBackgroundColor,
   delay,
 }) => {
+  if (!isValidHexColor(color, true)) {
+    throw new Error(`Invalid progress color: ${color ?? "<empty>"}`);
+  }
+  if (!isValidHexColor(progressBarBackgroundColor, true)) {
+    throw new Error(
+      `Invalid progress bar background color: ${progressBarBackgroundColor ?? "<empty>"}`,
+    );
+  }
+  if (!Number.isFinite(width)) {
+    throw new Error(`Invalid width: ${width ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(x)) {
+    throw new Error(`Invalid x: ${x ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(y)) {
+    throw new Error(`Invalid y: ${y ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(delay)) {
+    throw new Error(`Invalid delay: ${delay ?? "<empty>"}`);
+  }
+
   const progressPercentage = clampValue(progress, 2, 100);
 
   return `
@@ -110,10 +141,26 @@ const wrappedTextNode = ({
   className,
   testId,
 }) => {
-  const testIdAttr = testId ? ` data-testid="${testId}"` : "";
+  if (!Number.isFinite(x)) {
+    throw new Error(`Invalid x: ${x ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(y)) {
+    throw new Error(`Invalid y: ${y ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(width)) {
+    throw new Error(`Invalid width: ${width ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(height)) {
+    throw new Error(`Invalid height: ${height ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(lineCount)) {
+    throw new Error(`Invalid lineCount: ${lineCount ?? "<empty>"}`);
+  }
+
+  const testIdAttr = testId ? ` data-testid="${encodeHTML(testId)}"` : "";
   return `
     <foreignObject x="${x}" y="${y}" width="${width}" height="${height}">
-      <div xmlns="http://www.w3.org/1999/xhtml" class="${className}" style="--lines: ${lineCount};"${testIdAttr}>${encodeHTML(
+      <div xmlns="http://www.w3.org/1999/xhtml" class="${encodeHTML(className)}" style="--lines: ${lineCount};"${testIdAttr}>${encodeHTML(
         text,
       )}</div>
     </foreignObject>
@@ -129,25 +176,33 @@ const wrappedTextNode = ({
  * @param {string} color Text color (CSS `color` property).
  * @returns {string} CSS rules block (without the surrounding selector).
  */
-const wrappedTextStyles = (color) => `
-    color: ${color};
-    margin: 0;
-    line-height: 1.2;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: var(--lines);
-    line-clamp: var(--lines);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-bottom: 0.15em;
-`;
+const wrappedTextStyles = (color) => {
+  if (!isValidHexColor(color, true)) {
+    throw new Error(`Invalid text color: ${color ?? "<empty>"}`);
+  }
+
+  return `
+      color: ${color};
+      margin: 0;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: var(--lines);
+      line-clamp: var(--lines);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-bottom: 0.15em;
+  `;
+};
 
 /**
  * Creates an icon with label to display repository/gist stats like forks, stars, etc.
  *
- * @param {string} icon The icon to display.
+ * The caller must ensure that the passed `icon` is properly sanitized!
+ *
+ * @param {string} icon The sanitized icon to display.
  * @param {number|string} label The label to display.
  * @param {string} testid The testid to assign to the label.
  * @param {number} iconSize The size of the icon.
@@ -157,6 +212,11 @@ const iconWithLabel = (icon, label, testid, iconSize) => {
   if (typeof label === "number" && label <= 0) {
     return "";
   }
+
+  if (!Number.isFinite(iconSize)) {
+    throw new Error(`Invalid iconSize: ${iconSize ?? "<empty>"}`);
+  }
+
   const iconSvg = `
       <svg
         class="icon"
@@ -169,7 +229,7 @@ const iconWithLabel = (icon, label, testid, iconSize) => {
         ${icon}
       </svg>
     `;
-  const text = `<text data-testid="${testid}" class="gray">${label}</text>`;
+  const text = `<text data-testid="${encodeHTML(testid)}" class="gray">${encodeHTML(label)}</text>`;
   return flexLayout({ items: [iconSvg, text], gap: 20 }).join("");
 };
 

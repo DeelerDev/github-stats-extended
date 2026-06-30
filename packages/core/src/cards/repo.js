@@ -1,6 +1,6 @@
 import { Card } from "../common/Card.js";
 import { I18n } from "../common/I18n.js";
-import { getCardColors } from "../common/color.js";
+import { getCardColors, isValidHexColor } from "../common/color.js";
 import { kFormatter, wrapTextMultiline } from "../common/fmt.js";
 import { encodeHTML } from "../common/html.js";
 import { icons } from "../common/icons.js";
@@ -32,20 +32,29 @@ const DESCRIPTION_MAX_LINES = 3;
  * @param {string} textColor The color of the text.
  * @returns {string} Wrapped repo description SVG object.
  */
-const getBadgeSVG = (label, textColor, xOffset = 0) => `
-  <g data-testid="badge" class="badge" transform="translate(${320 + xOffset}, -18)">
-    <rect stroke="${textColor}" stroke-width="1" width="70" height="20" x="-12" y="-14" ry="10" rx="10"></rect>
-    <text
-      x="23" y="-5"
-      alignment-baseline="central"
-      dominant-baseline="central"
-      text-anchor="middle"
-      fill="${textColor}"
-    >
-      ${label}
-    </text>
-  </g>
-`;
+const getBadgeSVG = (label, textColor, xOffset = 0) => {
+  if (!isValidHexColor(textColor, true)) {
+    throw new Error(`Invalid text color: ${textColor ?? "<empty>"}`);
+  }
+  if (!Number.isFinite(xOffset)) {
+    throw new Error(`Invalid xOffset: ${xOffset ?? "<empty>"}`);
+  }
+
+  return `
+    <g data-testid="badge" class="badge" transform="translate(${320 + xOffset}, -18)">
+      <rect stroke="${textColor}" stroke-width="1" width="70" height="20" x="-12" y="-14" ry="10" rx="10"></rect>
+      <text
+        x="23" y="-5"
+        alignment-baseline="central"
+        dominant-baseline="central"
+        text-anchor="middle"
+        fill="${textColor}"
+      >
+        ${encodeHTML(label)}
+      </text>
+    </g>
+  `;
+};
 
 /**
  * @typedef {import("../fetchers/types").RepositoryData} RepositoryData Repository data.

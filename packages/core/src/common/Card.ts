@@ -1,3 +1,4 @@
+import { isValidGradient, isValidHexColor } from "./color.js";
 import { encodeHTML } from "./html.js";
 import { flexLayout } from "./render.js";
 
@@ -33,6 +34,8 @@ class Card {
   /**
    * Creates a new card instance.
    *
+   * The caller must ensure that the passed `titlePrefixIcon` is properly sanitized!
+   *
    * @param props Card arguments.
    * @param props.width Card width.
    * @param props.height Card height.
@@ -40,7 +43,7 @@ class Card {
    * @param props.colors Card colors arguments.
    * @param props.customTitle Card custom title.
    * @param props.defaultTitle Card default title.
-   * @param props.titlePrefixIcon Card title prefix icon.
+   * @param props.titlePrefixIcon Sanitized card title prefix icon.
    */
   constructor({
     width = 100,
@@ -69,9 +72,7 @@ class Card {
 
     // returns theme based colors with proper overrides and defaults
     this.colors = colors;
-    this.title = encodeHTML(
-      customTitle === undefined ? defaultTitle : customTitle,
-    );
+    this.title = customTitle === undefined ? defaultTitle : customTitle;
 
     this.css = "";
 
@@ -104,7 +105,9 @@ class Card {
   }
 
   /**
-   * @param value The CSS to add to the card.
+   * The caller must ensure that the passed `css` string is properly sanitized!
+   *
+   * @param value The sanitized CSS to add to the card.
    */
   setCSS(value: string): void {
     this.css = value;
@@ -121,10 +124,13 @@ class Card {
    * @param value Whether to hide the title or not.
    */
   setHideTitle(value: boolean): void {
-    this.hideTitle = value;
-    if (value) {
+    if (value && !this.hideTitle) {
       this.height -= 30;
     }
+    if (!value && this.hideTitle) {
+      this.height += 30;
+    }
+    this.hideTitle = value;
   }
 
   /**
@@ -144,7 +150,7 @@ class Card {
         y="0"
         class="header"
         data-testid="header"
-      >${this.title}</text>
+      >${encodeHTML(this.title)}</text>
     `;
 
     const prefixIcon = `
@@ -179,6 +185,9 @@ class Card {
   renderGradient(): string {
     if (typeof this.colors.bgColor !== "object") {
       return "";
+    }
+    if (!isValidGradient(this.colors.bgColor)) {
+      throw new Error(`Invalid gradient: ${this.colors.bgColor.join(",")}`);
     }
 
     const gradients = this.colors.bgColor.slice(1);
@@ -228,10 +237,32 @@ class Card {
   };
 
   /**
-   * @param body The inner body of the card.
+   * The caller must ensure that the passed `body` string is properly sanitized!
+   *
+   * @param body The sanitized inner body of the card.
    * @returns The rendered card.
    */
   render(body: string): string {
+    if (!isValidHexColor(this.colors.titleColor ?? "", true)) {
+      throw new Error(
+        `Invalid title color: ${this.colors.titleColor ?? "<empty>"}`,
+      );
+    }
+    if (!isValidHexColor(this.colors.borderColor ?? "", true)) {
+      throw new Error(
+        `Invalid border color: ${this.colors.borderColor ?? "<empty>"}`,
+      );
+    }
+    if (
+      !(typeof this.colors.bgColor === "object"
+        ? isValidGradient(this.colors.bgColor)
+        : isValidHexColor(this.colors.bgColor ?? ""))
+    ) {
+      throw new Error(
+        `Invalid background color: ${String(this.colors.bgColor)}`,
+      );
+    }
+
     return `
       <svg
         width="${this.width}"
@@ -242,8 +273,8 @@ class Card {
         role="img"
         aria-labelledby="descId"
       >
-        <title id="titleId">${this.a11yTitle}</title>
-        <desc id="descId">${this.a11yDesc}</desc>
+        <title id="titleId">${encodeHTML(this.a11yTitle)}</title>
+        <desc id="descId">${encodeHTML(this.a11yDesc)}</desc>
         <style>
           .header {
             font: 600 18px 'Segoe UI', Ubuntu, Sans-Serif;
